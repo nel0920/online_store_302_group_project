@@ -1,8 +1,76 @@
+
+<script type="text/javascript">      
+    var logData = new Array();
+    var manuData = new Array();
+
+    function convertArrayOfObjectsToCSV(args) {
+        var result, ctr, keys, columnDelimiter, lineDelimiter, data;
+
+        data = args.data || null;
+        if (data == null || !data.length) {
+            return null;
+        }
+
+        columnDelimiter = args.columnDelimiter || ',';
+        lineDelimiter = args.lineDelimiter || '\n';
+
+        keys = Object.keys(data[0]);
+
+        result = '';
+        result += keys.join(columnDelimiter);
+        result += lineDelimiter;
+
+        data.forEach(function(item) {
+            ctr = 0;
+            keys.forEach(function(key) {
+                if (ctr > 0) result += columnDelimiter;
+
+                result += item[key];
+                ctr++;
+            });
+            result += lineDelimiter;
+        });
+
+        return result;
+    }
+
+    function downloadCSV(args, csv) {
+        var data, filename, link;
+        
+        if (csv == null) return;
+
+        filename = args.filename || 'export.csv';
+
+        if (!csv.match(/^data:text\/csv/i)) {
+            csv = 'data:text/csv;charset=utf-8,' + csv;
+        }
+        data = encodeURI(csv);
+
+        link = document.createElement('a');
+        link.setAttribute('href', data);
+        link.setAttribute('download', filename);
+        link.click();
+    }
+
+    function a(args) {
+      downloadCSV(args, convertArrayOfObjectsToCSV({
+            data: logData
+        }));
+    }
+    function b(args) {
+      downloadCSV(args, convertArrayOfObjectsToCSV({
+            data: manuData
+        }));
+    }
+</script>  
+
 {{ header }}{{ column_left }}
 <div id="content">
   <div class="page-header">
     <div class="container-fluid">
-      <div class="pull-right"><a href="{{ invoice }}" target="_blank" data-toggle="tooltip" title="{{ button_invoice_print }}" class="btn btn-info"><i class="fa fa-print"></i></a> <a href="{{ shipping }}" target="_blank" data-toggle="tooltip" title="{{ button_shipping_print }}" class="btn btn-info"><i class="fa fa-truck"></i></a> <a href="{{ edit }}" data-toggle="tooltip" title="{{ button_edit }}" class="btn btn-primary"><i class="fa fa-pencil"></i></a> <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a></div>
+      <div class="pull-right">
+      <a href="{{ invoice }}" target="_blank" data-toggle="tooltip" title="{{ button_invoice_print }}" class="btn btn-info"><i class="fa fa-print"></i></a> <a href="{{ shipping }}" target="_blank" data-toggle="tooltip" title="{{ button_shipping_print }}" class="btn btn-info"><i class="fa fa-truck"></i></a> <a href="{{ edit }}" data-toggle="tooltip" title="{{ button_edit }}" class="btn btn-primary"><i class="fa fa-pencil"></i></a> <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a>
+      </div>
       <h1>{{ heading_title }}</h1>
       <ul class="breadcrumb">
         {% for breadcrumb in breadcrumbs %}
@@ -12,6 +80,12 @@
     </div>
   </div>
   <div class="container-fluid">
+  <div class="row">
+      <div class="col-md-4">
+      <a href='javascript:b({ filename: "manufacturer.csv" });'>Export data to Manufacturer</a><br/>
+      <a href='javascript:a({ filename: "logistic.csv" });'>Export data to Logistic</a>
+    </div>
+  </div>
     <div class="row">
       <div class="col-md-4">
         <div class="panel panel-default">
@@ -154,6 +228,27 @@
           <tbody>
           
           {% for product in products %}
+          <script type="text/javascript">
+          logData.push({
+            shipper_name: "Online Retailer",
+            shipper_email: "info@abc.com",
+            quantity: "{{ product.quantity }}",
+            weight: "{{ product.weight }}",
+            reciever_name: "{{ firstname }} {{ lastname }}",
+            reciever_address: "{{ shipping_address_1 }}",
+            receiver_contact:"{{ telephone }}"
+          });
+
+          manuData.push({
+            Customer_id: "1",
+            Manufacturer_id: "{{ product.manufacturer_id }}",
+            Product_id: "{{ product.product_id }}",
+            quantity: "{{ product.quantity }}",
+            order_date: "{{ date_added }}",
+            due_date: "{{ due_date }}",
+            Invoice_id:"{{ invoice_no }}"
+          });
+        </script>
           <tr>
             <td class="text-left"><a href="{{ product.href }}">{{ product.name }}</a> {% for option in product.option %} <br />
               {% if option.type != 'file' %}

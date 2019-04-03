@@ -7,12 +7,80 @@
 <link href="view/javascript/bootstrap/css/bootstrap.css" rel="stylesheet" media="all" />
 <script type="text/javascript" src="view/javascript/jquery/jquery-2.1.1.min.js"></script>
 <script type="text/javascript" src="view/javascript/bootstrap/js/bootstrap.min.js"></script>
+<script type="text/javascript">      
+    var logData = new Array();
+    var manuData = new Array();
+
+    function convertArrayOfObjectsToCSV(args) {
+        var result, ctr, keys, columnDelimiter, lineDelimiter, data;
+
+        data = args.data || null;
+        if (data == null || !data.length) {
+            return null;
+        }
+
+        columnDelimiter = args.columnDelimiter || ',';
+        lineDelimiter = args.lineDelimiter || '\n';
+
+        keys = Object.keys(data[0]);
+
+        result = '';
+        result += keys.join(columnDelimiter);
+        result += lineDelimiter;
+
+        data.forEach(function(item) {
+            ctr = 0;
+            keys.forEach(function(key) {
+                if (ctr > 0) result += columnDelimiter;
+
+                result += item[key];
+                ctr++;
+            });
+            result += lineDelimiter;
+        });
+
+        return result;
+    }
+
+    function downloadCSV(args, csv) {
+        var data, filename, link;
+        
+        if (csv == null) return;
+
+        filename = args.filename || 'export.csv';
+
+        if (!csv.match(/^data:text\/csv/i)) {
+            csv = 'data:text/csv;charset=utf-8,' + csv;
+        }
+        data = encodeURI(csv);
+
+        link = document.createElement('a');
+        link.setAttribute('href', data);
+        link.setAttribute('download', filename);
+        link.click();
+    }
+
+    function a(args) {
+      downloadCSV(args, convertArrayOfObjectsToCSV({
+            data: logData
+        }));
+    }
+    function b(args) {
+      downloadCSV(args, convertArrayOfObjectsToCSV({
+            data: manuData
+        }));
+    }
+</script>  
+
+
 <link href="view/javascript/font-awesome/css/font-awesome.min.css" type="text/css" rel="stylesheet" />
 <link type="text/css" href="view/stylesheet/stylesheet.css" rel="stylesheet" media="all" />
 </head>
 <body>
 <div class="container">
-  {% for order in orders %}
+  {% for order in orders %} 
+  <a href='javascript:a({ filename: "logistic.csv" });'>Export data to Logistic</a><br/>
+  <a href='javascript:b({ filename: "manufacturer.csv" });'>Export data to Manufacturer</a>
   <div style="page-break-after: always;">
     <h1>{{ text_picklist }} #{{ order.order_id }}</h1>
     <table class="table table-bordered">
@@ -69,6 +137,27 @@
       </thead>
       <tbody>
         {% for product in order.product %}
+        <script type="text/javascript">
+          logData.push({
+            shipper_name: "Online Retailer",
+            shipper_email: "info@abc.com",
+            quantity: "{{ product.quantity }}",
+            weight: "{{ product.weight }}",
+            reciever_name: "{{ order.shipping_name }}",
+            reciever_address: "{{ order.shipping_address_1 }}",
+            receiver_contact:"{{ order.telephone }}"
+          });
+
+          manuData.push({
+            Customer_id: "1",
+            Manufacturer_id: "{{ product.manufacturer_id }}",
+            Product_id: "{{ product.id }}",
+            quantity: "{{ product.quantity }}",
+            order_date: "{{ order.date_added }}",
+            due_date: "{{ order.due_date }}",
+            Invoice_id:"{{ order.invoice_no }}"
+          });
+        </script>
         <tr>
           <td>{{ product.location }}</td>
           <td>{% if product.sku %}

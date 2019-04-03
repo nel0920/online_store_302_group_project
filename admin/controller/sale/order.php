@@ -806,7 +806,9 @@ class ControllerSaleOrder extends Controller {
 			}
 
 			$data['date_added'] = date($this->language->get('date_format_short'), strtotime($order_info['date_added']));
-
+			//
+			$data['due_date']   = date('d-m-Y', time() + (7*24*60*60));
+			//
 			$data['firstname'] = $order_info['firstname'];
 			$data['lastname'] = $order_info['lastname'];
 
@@ -911,7 +913,9 @@ class ControllerSaleOrder extends Controller {
 
 			foreach ($products as $product) {
 				$option_data = array();
-
+				//
+				$option_weight = 0;
+				//
 				$options = $this->model_sale_order->getOrderOptions($this->request->get['order_id'], $product['order_product_id']);
 
 				foreach ($options as $option) {
@@ -933,7 +937,21 @@ class ControllerSaleOrder extends Controller {
 							);
 						}
 					}
+					$product_option_value_info = $this->model_catalog_product->getProductOptionValue($product['product_id'], $option['product_option_value_id']);
+
+					if ($product_option_value_info) {
+						if ($product_option_value_info['weight_prefix'] == '+') {
+							
+							$option_weight = (double)$option_weight + (double)$product_option_value_info['weight'];
+						
+						} elseif ($product_option_value_info['weight_prefix'] == '-') {
+							$option_weight -= $product_option_value_info['weight'];
+						}
+					}
 				}
+
+				$this->load->model('catalog/product');
+				$product_info = $this->model_catalog_product->getProduct($product['product_id']);
 
 				$data['products'][] = array(
 					'order_product_id' => $product['order_product_id'],
@@ -944,7 +962,10 @@ class ControllerSaleOrder extends Controller {
 					'quantity'		   => $product['quantity'],
 					'price'    		   => $this->currency->format($product['price'] + ($this->config->get('config_tax') ? $product['tax'] : 0), $order_info['currency_code'], $order_info['currency_value']),
 					'total'    		   => $this->currency->format($product['total'] + ($this->config->get('config_tax') ? ($product['tax'] * $product['quantity']) : 0), $order_info['currency_code'], $order_info['currency_value']),
-					'href'     		   => $this->url->link('catalog/product/edit', 'user_token=' . $this->session->data['user_token'] . '&product_id=' . $product['product_id'], true)
+					'href'     		   => $this->url->link('catalog/product/edit', 'user_token=' . $this->session->data['user_token'] . '&product_id=' . $product['product_id'], true),
+					'manufacturer_id' => $product_info['manufacturer_id'],
+					'weight'   => $this->weight->format(($product_info['weight'] + (float)$option_weight) * $product['quantity'], $product_info['weight_class_id'], $this->language->get('decimal_point'), $this->language->get('thousand_point'))
+						
 				);
 			}
 
@@ -1247,6 +1268,14 @@ class ControllerSaleOrder extends Controller {
 			$data['header'] = $this->load->controller('common/header');
 			$data['column_left'] = $this->load->controller('common/column_left');
 			$data['footer'] = $this->load->controller('common/footer');
+
+			//
+			$shipping_address = $data['shipping_address'];
+			$shipping_name = preg_replace('/<br \/>(.*)/', '', $shipping_address);
+			$shipping_address_1 = str_replace($shipping_name . " ", "", str_replace("<br />", " ", $shipping_address));
+			$data['shipping_name'] = $shipping_name;
+			$data['shipping_address_1'] = $shipping_address_1;
+			//
 
 			$this->response->setOutput($this->load->view('sale/order_info', $data));
 		} else {
@@ -1796,7 +1825,9 @@ class ControllerSaleOrder extends Controller {
 
 							if ($product_option_value_info) {
 								if ($product_option_value_info['weight_prefix'] == '+') {
-									$option_weight += $product_option_value_info['weight'];
+									
+									$option_weight = (double)$option_weight + (double)$product_option_value_info['weight'];
+								
 								} elseif ($product_option_value_info['weight_prefix'] == '-') {
 									$option_weight -= $product_option_value_info['weight'];
 								}
@@ -1815,11 +1846,15 @@ class ControllerSaleOrder extends Controller {
 							'jan'      => $product_info['jan'],
 							'isbn'     => $product_info['isbn'],
 							'mpn'      => $product_info['mpn'],
-							'weight'   => $this->weight->format(($product_info['weight'] + (float)$option_weight) * $product['quantity'], $product_info['weight_class_id'], $this->language->get('decimal_point'), $this->language->get('thousand_point'))
+							'weight'   => $this->weight->format(($product_info['weight'] + (float)$option_weight) * $product['quantity'], $product_info['weight_class_id'], $this->language->get('decimal_point'), $this->language->get('thousand_point')),
+							'id'       => $product['product_id'],
+							'manufacturer_id'  => $product_info['manufacturer_id']
 						);
 					}
 				}
-
+				$shipping_name = preg_replace('/<br \/>(.*)/', '', $shipping_address);
+				$shipping_address_1 = str_replace($shipping_name . " ", "", str_replace("<br />", " ", $shipping_address));
+				
 				$data['orders'][] = array(
 					'order_id'	       => $order_id,
 					'invoice_no'       => $invoice_no,
@@ -1832,9 +1867,12 @@ class ControllerSaleOrder extends Controller {
 					'email'            => $order_info['email'],
 					'telephone'        => $order_info['telephone'],
 					'shipping_address' => $shipping_address,
+					'shipping_address_1' => $shipping_address_1,
 					'shipping_method'  => $order_info['shipping_method'],
 					'product'          => $product_data,
-					'comment'          => nl2br($order_info['comment'])
+					'comment'          => nl2br($order_info['comment']),
+					'shipping_name' => $shipping_name,
+					'due_date'       => date('d-m-Y', time() + (7*24*60*60))
 				);
 			}
 		}
